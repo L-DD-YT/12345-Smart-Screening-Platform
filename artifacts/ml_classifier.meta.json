@@ -1,0 +1,15 @@
+{
+  "model_name": "tfidf-logreg",
+  "model_version": "ml-20260509124355",
+  "trained_at": "2026-05-09T12:43:55.400193",
+  "sample_count": 2000,
+  "label_distribution": {
+    "民事支持起诉": 249,
+    "行政违法监督": 395,
+    "公益诉讼": 918,
+    "刑事犯罪线索": 151,
+    "其他": 287
+  },
+  "feature_version": "feature-v7",
+  "validation_accuracy": 0.972
+}

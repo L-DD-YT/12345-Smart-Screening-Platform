@@ -1,0 +1,49 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+
+# Local database and runtime outputs
+*.db
+*.sqlite
+*.sqlite3
+exports/*
+!exports/.gitkeep
+
+# IDE and OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+*.tmp
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Model/runtime downloads (keep committed artifacts/*.joblib)
+artifacts/*.onnx
+artifacts/*.bin
+artifacts/*.safetensors
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local test scripts with credentials
+test2.py

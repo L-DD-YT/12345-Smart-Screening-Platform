@@ -1,0 +1,7 @@
+{
+  "ready": true,
+  "model_name": "BAAI/bge-small-zh-v1.5",
+  "model_version": "semantic-20260509",
+  "updated_at": "2026-05-09T12:43:58.051897",
+  "vector_count": 10
+}

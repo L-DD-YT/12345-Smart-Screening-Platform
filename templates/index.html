@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>12345市民投诉热线数据中涉检线索智能筛查平台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+    <script>
+        // Expose runtime config consumed by static/app.js (e.g. Amap web key for the
+        // 房山区 thematic map). Defined here so the template controls the values.
+        window.APP_CONFIG = {
+            amapWebKey: "{{ app_config.amap_web_key }}"
+        };
+    </script>
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-badge">12345</div>
+                <div>
+                    <p class="brand-title">12345市民投诉热线数据中涉检线索智能筛查平台</p>
+                    <p class="brand-subtitle">面向数智检察场景的投诉工单导入、筛查、标注、台账与导出一体化原型</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="#overview">平台概览</a>
+                <a href="#import">数据导入</a>
+                <a href="#screening">智能筛查</a>
+                <a href="#review">线索标注</a>
+                <a href="#export">导出与安全</a>
+                <a href="#dashboard">后台态势</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="hero-section" id="overview">
+                <div class="hero-copy">
+                    <span class="eyebrow">数智检察 · 12345工单治理 · 线索智能发现</span>
+                    <h1>从海量市民投诉中，<span>快速筛出涉检线索、语义相关投诉与重点监督点位</span></h1>
+                    <p>
+                        平台围绕“数据导入、智能筛查、语义联想检索、点位聚合、线索标注、台账导出”构建完整演示流程，
+                        面向民事支持起诉、行政违法监督、公益诉讼、刑事犯罪线索等重点场景，提升 12345 热线数据的涉检线索发现效率。
+                    </p>
+                    <div class="hero-actions">
+                        <a class="primary-btn" href="#import">开始导入工单</a>
+                        <a class="secondary-btn" href="#screening">查看筛查结果</a>
+                    </div>
+                    <div class="flow-steps">
+                        <div class="step-card">
+                            <span>01</span>
+                            <strong>导入原始工单</strong>
+                            <p>支持 12345、街道综治、检察业务来源接入，也支持人工补录与演示批量导入。</p>
+                        </div>
+                        <div class="step-card">
+                            <span>02</span>
+                            <strong>规则智能筛查</strong>
+                            <p>自动分类、分级、去重、识别点位，并提取欠薪场景关键结构化字段。</p>
+                        </div>
+                        <div class="step-card">
+                            <span>03</span>
+                            <strong>人工标注入账</strong>
+                            <p>对高价值线索进行人工确认、补充说明、标注状态并形成台账闭环。</p>
+                        </div>
+                        <div class="step-card">
+                            <span>04</span>
+                            <strong>台账导出汇报</strong>
+                            <p>一键导出筛查台账，为演示视频、PPT 与技术文档提供直接支撑。</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-panel">
+                    <div class="hero-panel-top">
+                        <span class="panel-tag">平台核心指标</span>
+                        <strong>聚焦海量投诉中的涉检识别、同点位聚合和高风险线索发现</strong>
+                    </div>
+                    <div class="panel-grid">
+                        <article>
+                            <h3 id="metric-total-records">{{ dashboard.total_records }}</h3>
+                            <p>累计工单</p>
+                        </article>
+                        <article>
+                            <h3 id="metric-screened-records">{{ dashboard.screened_records }}</h3>
+                            <p>已筛查工单</p>
+                        </article>
+                        <article>
+                            <h3 id="metric-procuratorial-records">{{ dashboard.procuratorial_records }}</h3>
+                            <p>涉检候选线索</p>
+                        </article>
+                        <article>
+                            <h3 id="metric-high-risk-records">{{ dashboard.high_risk_records }}</h3>
+                            <p>高风险线索</p>
+                        </article>
+                    </div>
+                    <div class="hero-panel-bottom">
+                        <p>平台亮点</p>
+                        <ul>
+                            <li>支持对“拖欠工资、家暴虐待、处罚过重、同案不同罚、环境污染”等场景做规则筛查。</li>
+                            <li>支持输入业务关键词做语义联想检索，召回未必直接包含原词但语义相关的投诉。</li>
+                            <li>支持默认稳健聚合与增强语义聚类两种监督点位视图，兼顾稳健汇报与智能发现。</li>
+                        </ul>
+                        <div class="system-status-grid">
+                            <div class="system-status-card">
+                                <span>模型辅助状态</span>
+                                <strong id="llm-mode-text">{{ dashboard.llm_status.mode }}</strong>
+                                <p id="llm-provider-text">{{ dashboard.llm_status.provider }} / {{ dashboard.llm_status.model_name }}</p>
+                            </div>
+                        <div class="system-status-card">
+                            <span>本地算法状态</span>
+                            <strong id="local-model-status-text">{{ dashboard.model_status.summary }}</strong>
+                            <p id="local-model-detail-text">{{ dashboard.model_status.detail }}</p>
+                        </div>
+                            <div class="system-status-card">
+                                <span>外部接入状态</span>
+                                <strong id="integration-mode-text">{{ dashboard.integration_status.status }}</strong>
+                                <p>{{ dashboard.integration_status.mode }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stats-section">
+                <article class="stats-card">
+                    <p>重复投诉识别</p>
+                    <h2 id="metric-duplicate-records">{{ dashboard.duplicate_records }}</h2>
+                    <span>用于发现同点位、多次投诉和批量问题聚集场景</span>
+                </article>
+                <article class="stats-card">
+                    <p>点位明确工单</p>
+                    <h2 id="metric-location-records">{{ dashboard.location_records }}</h2>
+                    <span>为公益诉讼线索筛查与地图展示提供基础</span>
+                </article>
+                <article class="stats-card">
+                    <p>规则覆盖场景</p>
+                    <h2>4 类</h2>
+                    <span>民事支持起诉、行政违法监督、公益诉讼、刑事犯罪线索</span>
+                </article>
+                <article class="stats-card">
+                    <p>目标能力</p>
+                    <h2>5 步</h2>
+                    <span>导入、筛查、标注、台账、导出全流程演示</span>
+                </article>
+            </section>
+
+            <section class="module-section" id="import">
+                <div class="section-heading">
+                    <span>模块一</span>
+                    <h2>数据导入</h2>
+                    <p>支持外部来源拉取、人工补录和批量演示导入，导入后的工单统一进入待筛查列表。</p>
+                </div>
+                <div class="two-column">
+                    <div class="glass-card form-card">
+                        <h3>人工补录 / 确认导入工单</h3>
+                        <form id="import-form" class="smart-form">
+                            <input type="hidden" name="sync_record_id" value="">
+                            <div class="form-grid">
+                                <label>
+                                    <span>工单编号</span>
+                                    <input type="text" name="ticket_no" placeholder="例如：12345-2026-0010" required>
+                                </label>
+                                <label>
+                                    <span>工单来源</span>
+                                    <select name="source" required>
+                                        {% for source in sources %}
+                                        <option value="{{ source }}">{{ source }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label class="full-width">
+                                    <span>工单标题</span>
+                                    <input type="text" name="title" placeholder="例如：工地欠薪投诉 / 河道污染投诉" required>
+                                </label>
+                                <label>
+                                    <span>投诉人姓名</span>
+                                    <input type="text" name="complainant_name" placeholder="可选">
+                                </label>
+                                <label>
+                                    <span>投诉人电话</span>
+                                    <input type="text" name="complainant_phone" placeholder="可选">
+                                </label>
+                                <label>
+                                    <span>所属区域</span>
+                                    <input type="text" name="district" placeholder="例如：房山区">
+                                </label>
+                                <label>
+                                    <span>具体点位</span>
+                                    <input type="text" name="location_text" placeholder="例如：某项目工地 / 某河道沿岸">
+                                </label>
+                                <label>
+                                    <span>投诉时间</span>
+                                    <input type="text" name="event_time" placeholder="例如：2026-04-10 10:30">
+                                </label>
+                                <label class="full-width">
+                                    <span>投诉内容</span>
+                                    <textarea name="complaint_text" rows="5" placeholder="输入完整投诉文本，用于分类、去重、点位识别和结构化提取" required></textarea>
+                                </label>
+                            </div>
+                            <button type="submit" class="primary-btn full-btn">导入到待筛查列表</button>
+                        </form>
+                    </div>
+                    <div class="glass-card">
+                        <h3>外部来源接入</h3>
+                        <div class="integration-actions">
+                            <button type="button" class="ghost-btn integration-pull-btn" data-source="12345">拉取 12345 工单</button>
+                            <button type="button" class="ghost-btn integration-pull-btn" data-source="街道综治">拉取 街道综治 工单</button>
+                            <button type="button" class="ghost-btn integration-pull-btn" data-source="检察业务">拉取 检察业务 工单</button>
+                        </div>
+                        <div class="integration-note">
+                            演示模式下会生成一条可直接导入的标准化工单；如后续接入真实接口，可继续复用同一接入层。
+                        </div>
+                        <div class="source-tags" id="source-tags">
+                            {% for item in dashboard.source_distribution %}
+                            <span>{{ item.name }} · {{ item.count }}</span>
+                            {% endfor %}
+                        </div>
+                        <div id="integration-sources" class="integration-source-list">
+                            {% for item in dashboard.integration_sources %}
+                            <article class="integration-source-item">
+                                <div class="integration-source-head">
+                                    <strong>{{ item.source_system }}</strong>
+                                    <span>{{ item.mode }}</span>
+                                </div>
+                                <p>{{ item.status }}</p>
+                                <div class="integration-source-meta">
+                                    <span>鉴权：{{ item.auth_type }}</span>
+                                    <span>拉取：{{ item.pull_strategy }}</span>
+                                    <span>地址：{{ item.endpoint }}</span>
+                                </div>
+                            </article>
+                            {% endfor %}
+                        </div>
+                        <div class="file-import-panel">
+                            <h4>文件批量导入</h4>
+                            <p class="document-tip">支持导入 `.xls/.xlsx` 表格，兼容工单编号、标题、主要内容、问题分类、来电人、电话、区街乡镇、村/社区、小区点位、企业名称等常见字段，上传后会自动执行筛查。</p>
+                            <form id="file-import-form" class="smart-form compact-form" enctype="multipart/form-data">
+                                <div class="form-grid">
+                                    <label>
+                                        <span>导入来源</span>
+                                        <select name="source">
+                                            {% for source in sources %}
+                                            <option value="{{ source }}">{{ source }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                    <label class="full-width">
+                                        <span>选择表格文件</span>
+                                        <input type="file" name="file" accept=".xls,.xlsx" required>
+                                    </label>
+                                </div>
+                                <button id="file-import-btn" type="submit" class="secondary-btn full-btn">上传并批量导入文件</button>
+                            </form>
+                        </div>
+                        <div class="batch-actions">
+                            <button id="demo-import-btn" type="button" class="secondary-btn full-btn">一键导入演示批量工单</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="module-section accent-section" id="screening">
+                <div class="section-heading">
+                    <span>模块二</span>
+                    <h2>智能筛查</h2>
+                    <p>围绕分类、分级、去重、点位识别和结构化提取进行规则筛查，形成可解释的涉检候选线索列表。</p>
+                </div>
+                <div class="glass-card toolbar-card">
+                    <div class="toolbar-row">
+                        <button id="run-screening-btn" type="button" class="primary-btn">执行待筛查工单筛查</button>
+                        <button id="train-ml-btn" type="button" class="secondary-btn">训练本地ML模型</button>
+                        <button id="warmup-dl-btn" type="button" class="secondary-btn">预热深度语义模型</button>
+                        <button id="refresh-dashboard-btn" type="button" class="secondary-btn">刷新平台数据</button>
+                    </div>
+                    <div id="screening-job-meta" class="document-tip">
+                        当前默认采用分批筛查、增量更新和规则+ML+DL 综合判定。
+                    </div>
+                    <form id="screening-filter-form" class="smart-form compact-form inline-form">
+                        <div class="form-grid">
+                            <label class="full-width">
+                                <span>语义联想检索</span>
+                                <input type="text" name="query" placeholder="例如：监督检查履职 / 监管不到位 / 长期投诉未整改">
+                            </label>
+                            <label>
+                                <span>检索模式</span>
+                                <select name="search_mode">
+                                    <option value="hybrid">混合检索</option>
+                                    <option value="keyword">关键词检索</option>
+                                    <option value="semantic">语义检索</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>来源</span>
+                                <select name="source">
+                                    <option value="">全部来源</option>
+                                    {% for source in sources %}
+                                    <option value="{{ source }}">{{ source }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label>
+                                <span>类别</span>
+                                <select name="category">
+                                    <option value="">全部类别</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category }}">{{ category }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label>
+                                <span>法定领域</span>
+                                <select name="legal_domain">
+                                    <option value="">全部领域</option>
+                                    {% for domain in legal_domains %}
+                                    <option value="{{ domain }}">{{ domain }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label>
+                                <span>风险等级</span>
+                                <select name="risk_level">
+                                    <option value="">全部等级</option>
+                                    {% for risk in risk_levels %}
+                                    <option value="{{ risk }}">{{ risk }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label>
+                                <span>公益属性</span>
+                                <select name="public_interest_level">
+                                    <option value="">全部</option>
+                                    <option value="公益">公益</option>
+                                    <option value="待复核">待复核</option>
+                                    <option value="私益">私益</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>预警等级</span>
+                                <select name="warning_level">
+                                    <option value="">全部</option>
+                                    <option value="高">高</option>
+                                    <option value="中">中</option>
+                                    <option value="低">低</option>
+                                    <option value="无">无</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>是否有点位</span>
+                                <select name="has_location">
+                                    <option value="">全部</option>
+                                    <option value="true">有点位</option>
+                                    <option value="false">无点位</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>是否重复</span>
+                                <select name="is_duplicate">
+                                    <option value="">全部</option>
+                                    <option value="true">重复投诉</option>
+                                    <option value="false">非重复</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>重复等级</span>
+                                <select name="duplicate_level">
+                                    <option value="">全部</option>
+                                    <option value="强重复">强重复</option>
+                                    <option value="弱重复">弱重复</option>
+                                    <option value="同区域同类高频">同区域同类高频</option>
+                                    <option value="无">无</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>履职异常</span>
+                                <select name="performance_anomaly_level">
+                                    <option value="">全部</option>
+                                    <option value="高">高</option>
+                                    <option value="中">中</option>
+                                    <option value="低">低</option>
+                                    <option value="无">无</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>办理优先级</span>
+                                <select name="priority_level">
+                                    <option value="">全部</option>
+                                    <option value="高">高</option>
+                                    <option value="中">中</option>
+                                    <option value="低">低</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>标注状态</span>
+                                <select name="review_status">
+                                    <option value="">全部状态</option>
+                                    {% for status in review_statuses %}
+                                    <option value="{{ status }}">{{ status }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        </div>
+                        <button type="submit" class="secondary-btn">应用筛选条件</button>
+                    </form>
+                    <div id="semantic-search-meta" class="document-tip">
+                        当前支持关键词直达、扩展词召回和本地语义联想检索。
+                    </div>
+                </div>
+                <div class="glass-card table-card">
+                    <div class="response-head">
+                        <h3>筛查结果列表</h3>
+                        <span id="table-count-text" class="status-pill neutral">当前展示 {{ dashboard.recent_records|length }} 条</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>工单编号</th>
+                                    <th>来源</th>
+                                    <th>类别</th>
+                                    <th>公益属性</th>
+                                    <th>风险</th>
+                                    <th>预警</th>
+                                    <th>点位</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="screening-table-body">
+                                {% for item in dashboard.recent_records %}
+                                <tr>
+                                    <td>{{ item.ticket_no }}</td>
+                                    <td>{{ item.source }}</td>
+                                    <td>{{ item.category }}</td>
+                                    <td>{{ item.public_interest_level }}</td>
+                                    <td>{{ item.risk_level }}</td>
+                                    <td>{{ item.warning_level }}</td>
+                                    <td>{{ item.location_text or "未识别" }}</td>
+                                    <td><button type="button" class="table-action-btn" data-record-id="{{ item.id }}">查看</button></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-row">
+                        <button id="table-prev-btn" type="button" class="ghost-btn">上一页</button>
+                        <span id="table-page-info" class="document-tip">第 1 / 1 页</span>
+                        <button id="table-next-btn" type="button" class="ghost-btn">下一页</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="module-section" id="review">
+                <div class="section-heading">
+                    <span>模块三</span>
+                    <h2>线索标注与台账管理</h2>
+                    <p>对筛查结果进行人工复核、标注和办理状态维护，形成可汇报的涉检线索台账。</p>
+                </div>
+                <div class="two-column uneven">
+                    <div class="glass-card">
+                        <div class="response-head">
+                            <h3>当前选中工单</h3>
+                            <span id="selected-record-pill" class="status-pill neutral">未选择工单</span>
+                        </div>
+                        <div id="selected-record-summary" class="response-box">
+                            请先在上方筛查结果列表中点击“查看”，然后在这里查看摘要、结构化字段和规则命中说明。
+                        </div>
+                        <div class="detail-grid">
+                            <div class="detail-card">
+                                <h4>结构化提取</h4>
+                                <ul id="structured-fields-list" class="material-list">
+                                    <li>等待选择工单</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>命中规则</h4>
+                                <ul id="matched-rules-list" class="material-list">
+                                    <li>等待选择工单</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>公益判别依据</h4>
+                                <ul id="record-public-interest-card" class="material-list">
+                                    <li>等待选择工单</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>主领域 / 次领域 / 冲突说明</h4>
+                                <ul id="record-domain-card" class="material-list">
+                                    <li>等待选择工单</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>预警与重复信息</h4>
+                                <ul id="record-warning-card" class="material-list">
+                                    <li>等待选择工单</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>履职异常监测</h4>
+                                <ul id="record-anomaly-card" class="material-list">
+                                    <li>等待选择工单</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <button id="assistant-explain-btn" type="button" class="secondary-btn full-btn">生成辅助研判说明</button>
+                        <div id="assistant-summary" class="document-tip">辅助研判说明将在这里展示。</div>
+                        <ul id="assistant-key-points" class="material-list assistant-points">
+                            <li>等待生成说明</li>
+                        </ul>
+                        <div class="detail-grid assistant-grid">
+                            <div class="detail-card">
+                                <h4>法条引用</h4>
+                                <ul id="assistant-statutes-list" class="material-list">
+                                    <li>暂无</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>典型案例</h4>
+                                <ul id="assistant-cases-list" class="material-list">
+                                    <li>暂无</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>监管职责映射</h4>
+                                <ul id="assistant-regulators-list" class="material-list">
+                                    <li>暂无</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>调查重点</h4>
+                                <ul id="assistant-investigation-list" class="material-list">
+                                    <li>暂无</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>证据建议</h4>
+                                <ul id="assistant-evidence-list" class="material-list">
+                                    <li>暂无</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>成案可能性</h4>
+                                <div id="assistant-prosecution" class="response-box compact-output">尚未评估</div>
+                            </div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="response-head">
+                                <h4>推送载荷预览</h4>
+                                <span id="assistant-push-pill" class="status-pill neutral">未生成</span>
+                            </div>
+                            <pre id="assistant-recommended-push" class="document-output compact-output">点击“生成辅助研判说明”后会展示推送给业务系统的载荷预览。</pre>
+                        </div>
+                    </div>
+                    <div class="glass-card form-card">
+                        <h3>人工标注与入账</h3>
+                        <form id="review-form" class="smart-form">
+                            <input type="hidden" name="record_id" value="">
+                            <div class="form-grid">
+                                <label class="full-width">
+                                    <span>人工标注结论</span>
+                                    <input type="text" name="manual_label" placeholder="例如：建议移送公益诉讼 / 建议行政监督复核" required>
+                                </label>
+                                <label>
+                                    <span>标注状态</span>
+                                    <select name="review_status">
+                                        {% for status in review_statuses %}
+                                        <option value="{{ status }}">{{ status }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label>
+                                    <span>办理状态</span>
+                                    <select name="handling_status">
+                                        {% for status in handling_statuses %}
+                                        <option value="{{ status }}">{{ status }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label class="full-width">
+                                    <span>复核意见</span>
+                                    <textarea name="review_comment" rows="6" placeholder="补充说明人工判断依据、是否建议移送、是否需要补充点位或证据"></textarea>
+                                </label>
+                            </div>
+                            <button type="submit" class="primary-btn full-btn">保存标注到台账</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section class="module-section accent-section" id="export">
+                <div class="section-heading">
+                    <span>模块四</span>
+                    <h2>一键导出与安全设计</h2>
+                    <p>导出筛查台账，展示算法可解释性，并说明数据脱敏、权限控制和审计留痕等安全策略。</p>
+                </div>
+                <div class="two-column">
+                    <div class="glass-card">
+                        <div class="response-head">
+                            <h3>一键导出</h3>
+                            <button id="export-btn" type="button" class="primary-btn">导出当前筛查台账</button>
+                        </div>
+                        <div id="export-meta" class="response-inline">
+                            <span>导出格式：CSV</span>
+                            <span>导出范围：当前筛查条件</span>
+                            <span id="export-file-path-text">导出策略：按批次写入磁盘并返回预览</span>
+                        </div>
+                        <pre id="export-output" class="document-output compact-output">点击“导出当前筛查台账”后，系统会在这里展示导出文件预览。</pre>
+                    </div>
+                    <div class="glass-card">
+                        <h3>安全与合规设计</h3>
+                        <div class="document-tip">
+                            平台默认以最小必要原则使用热线数据，展示样例中不保留完整敏感身份信息，并预留真实环境中的账号权限、操作审计和导出留痕能力。
+                        </div>
+                        <ul class="material-list">
+                            <li>数据导入采用来源隔离设计，保留原始 payload 与标准化字段双轨存储。</li>
+                            <li>对投诉人姓名、联系方式等个人信息只做演示级展示，真实环境可进一步做脱敏和分权访问。</li>
+                            <li>导出动作写入导出记录，便于后续补充审计日志和责任追踪。</li>
+                            <li>规则引擎优先、模型辅助解释，避免核心识别能力完全依赖外部模型。</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="module-section" id="dashboard">
+                <div class="section-heading">
+                    <span>模块五</span>
+                    <h2>后台态势总览</h2>
+                    <p>面向演示汇报展示来源分布、类别分布、风险分布、重点点位聚合和导出记录。</p>
+                </div>
+                <div class="admin-grid">
+                    <div class="glass-card admin-panel">
+                        <h3>来源分布</h3>
+                        <div id="source-distribution" class="distribution-list">
+                            {% for item in dashboard.source_distribution %}
+                            <div class="distribution-row">
+                                <span>{{ item.name }}</span>
+                                <div class="distribution-bar"><i data-width="{{ item.count }}"></i></div>
+                                <strong>{{ item.count }}</strong>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="glass-card admin-panel">
+                        <h3>类别分布</h3>
+                        <div id="category-distribution" class="distribution-list">
+                            {% for item in dashboard.category_distribution %}
+                            <div class="distribution-row">
+                                <span>{{ item.name }}</span>
+                                <div class="distribution-bar"><i data-width="{{ item.count }}"></i></div>
+                                <strong>{{ item.count }}</strong>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-grid lower-grid">
+                    <div class="glass-card admin-panel">
+                        <h3>房山区投诉风险专题图</h3>
+                        <div class="response-inline">
+                            <span class="document-tip">基于房山区专题轮廓图展示街镇热点、风险强度与趋势变化</span>
+                            <span id="fangshan-map-selected" class="status-pill neutral">当前区域：全部街镇</span>
+                        </div>
+                        <div class="map-layout">
+                            <div class="detail-card">
+                                <div id="fangshan-map-panel" class="fangshan-map-panel"></div>
+                            </div>
+                            <div class="detail-card">
+                                <h4>区域点位与疑难工单</h4>
+                                <div id="fangshan-map-meta" class="document-tip">点击房山区内部热区，查看对应热点点位和疑难工单。</div>
+                                <div id="fangshan-map-clusters" class="admin-list compact-list"></div>
+                                <div id="fangshan-map-records" class="admin-list compact-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-grid lower-grid">
+                    <div class="glass-card admin-panel">
+                        <h3>公益属性与法定领域</h3>
+                        <div class="dual-distribution">
+                            <div>
+                                <p class="sub-block-title">公益 / 私益分布</p>
+                                <div id="public-interest-distribution" class="distribution-list">
+                                    {% for item in dashboard.public_interest_distribution %}
+                                    <div class="distribution-row">
+                                        <span>{{ item.name }}</span>
+                                        <div class="distribution-bar"><i data-width="{{ item.count }}"></i></div>
+                                        <strong>{{ item.count }}</strong>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div>
+                                <p class="sub-block-title">法定领域分布</p>
+                                <div id="legal-domain-distribution" class="distribution-list">
+                                    {% for item in dashboard.legal_domain_distribution %}
+                                    <div class="distribution-row">
+                                        <span>{{ item.name }}</span>
+                                        <div class="distribution-bar"><i data-width="{{ item.count }}"></i></div>
+                                        <strong>{{ item.count }}</strong>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card admin-panel">
+                        <h3>预警态势</h3>
+                        <div class="dual-distribution">
+                            <div>
+                                <p class="sub-block-title">预警等级分布</p>
+                                <div id="warning-distribution" class="distribution-list">
+                                    {% for item in dashboard.warning_distribution %}
+                                    <div class="distribution-row">
+                                        <span>{{ item.name }}</span>
+                                        <div class="distribution-bar"><i data-width="{{ item.count }}"></i></div>
+                                        <strong>{{ item.count }}</strong>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div>
+                                <p class="sub-block-title">热点区域</p>
+                                <div id="district-hotspot-list" class="admin-list compact-list">
+                                    {% for item in dashboard.district_hotspots %}
+                                    <div class="admin-record">
+                                        <strong>{{ item.name }}</strong>
+                                        <p>重点线索 {{ item.count }} 条</p>
+                                    </div>
+                                    {% else %}
+                                    <div class="admin-record"><p>当前暂无热点区域。</p></div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-grid lower-grid">
+                    <div class="glass-card admin-panel">
+                        <h3>风险分布与复核状态</h3>
+                        <div class="dual-distribution">
+                            <div>
+                                <p class="sub-block-title">风险等级</p>
+                                <div id="risk-distribution" class="distribution-list">
+                                    {% for item in dashboard.risk_distribution %}
+                                    <div class="distribution-row">
+                                        <span>{{ item.name }}</span>
+                                        <div class="distribution-bar"><i data-width="{{ item.count }}"></i></div>
+                                        <strong>{{ item.count }}</strong>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div>
+                                <p class="sub-block-title">标注状态</p>
+                                <div id="review-distribution" class="distribution-list">
+                                    {% for item in dashboard.review_distribution %}
+                                    <div class="distribution-row">
+                                        <span>{{ item.name }}</span>
+                                        <div class="distribution-bar"><i data-width="{{ item.count }}"></i></div>
+                                        <strong>{{ item.count }}</strong>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card admin-panel">
+                        <h3>监督点位双模式聚合</h3>
+                        <div class="response-inline">
+                            <select id="point-cluster-mode-select">
+                                <option value="stable">默认模式：稳健聚合</option>
+                                <option value="aggressive">增强模式：疑似同监督点位</option>
+                            </select>
+                            <button id="refresh-cluster-btn" type="button" class="ghost-btn">刷新聚合视图</button>
+                        </div>
+                        <div id="point-cluster-meta" class="document-tip">
+                            默认模式适合稳定汇报；增强模式仅供研判参考，需人工复核。
+                        </div>
+                        <div class="detail-grid">
+                            <div class="detail-card">
+                                <h4>监督点位聚合结果</h4>
+                                <div id="point-cluster-list" class="admin-list compact-list">
+                                    {% for item in dashboard.focus_locations %}
+                                    <div class="admin-record">
+                                        <strong>{{ item.name }}</strong>
+                                        <p>关联投诉 {{ item.count }} 条</p>
+                                    </div>
+                                    {% else %}
+                                    <div class="admin-record"><p>当前暂无重复点位聚合结果。</p></div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="detail-card">
+                                <h4>最近导出记录</h4>
+                                <div id="export-history" class="admin-list compact-list">
+                                    {% for item in dashboard.recent_exports %}
+                                    <div class="admin-record">
+                                        <strong>{{ item.file_name }}</strong>
+                                        <p>{{ item.export_scope }} · {{ item.item_count }} 条</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-grid lower-grid">
+                    <div class="glass-card admin-panel">
+                        <h3>趋势分析</h3>
+                        <div class="trend-grid">
+                            <div class="detail-card">
+                                <h4>公益线索趋势</h4>
+                                <div id="public-interest-trend" class="trend-list"></div>
+                            </div>
+                            <div class="detail-card">
+                                <h4>预警工单趋势</h4>
+                                <div id="warning-trend" class="trend-list"></div>
+                            </div>
+                            <div class="detail-card">
+                                <h4>重复投诉趋势</h4>
+                                <div id="duplicate-trend" class="trend-list"></div>
+                            </div>
+                            <div class="detail-card">
+                                <h4>重点领域趋势</h4>
+                                <div id="domain-trend-list" class="admin-list compact-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card admin-panel">
+                        <h3>疑难工单与专项分析</h3>
+                        <div class="detail-grid">
+                            <div class="detail-card">
+                                <h4>疑难工单</h4>
+                                <div id="difficult-record-list" class="admin-list compact-list">
+                                    {% for item in dashboard.difficult_records %}
+                                    <div class="admin-record">
+                                        <strong>{{ item.ticket_no }} · {{ item.title }}</strong>
+                                        <p>{{ item.district }} / {{ item.legal_domain }} / 预警 {{ item.warning_level }}</p>
+                                    </div>
+                                    {% else %}
+                                    <div class="admin-record"><p>当前暂无疑难工单。</p></div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="detail-card">
+                                <h4>专项分析摘要</h4>
+                                <div id="special-report-summary" class="response-box">
+                                    {% for line in dashboard.special_report.summary_lines %}
+                                    {{ line }}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-grid lower-grid">
+                    <div class="glass-card admin-panel">
+                        <h3>履职异常与重复聚合</h3>
+                        <div class="dual-distribution">
+                            <div>
+                                <p class="sub-block-title">履职异常等级分布</p>
+                                <div id="performance-anomaly-distribution" class="distribution-list"></div>
+                            </div>
+                            <div>
+                                <p class="sub-block-title">重复聚合层级分布</p>
+                                <div id="duplicate-layer-distribution" class="distribution-list"></div>
+                            </div>
+                        </div>
+                        <div class="detail-grid">
+                            <div class="detail-card">
+                                <h4>履职异常单位 Top</h4>
+                                <div id="performance-anomaly-buckets" class="admin-list compact-list"></div>
+                            </div>
+                            <div class="detail-card">
+                                <h4>持续未解决工单</h4>
+                                <div id="urgent-record-list" class="admin-list compact-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card admin-panel">
+                        <h3>推送任务中心</h3>
+                        <div class="response-inline">
+                            <button id="push-enqueue-batch-btn" type="button" class="ghost-btn">入队 T+1 批量推送</button>
+                            <button id="push-enqueue-weekly-btn" type="button" class="ghost-btn">入队周报推送</button>
+                            <button id="push-enqueue-emergency-btn" type="button" class="ghost-btn">入队紧急推送</button>
+                            <button id="push-deliver-btn" type="button" class="secondary-btn">投递待处理任务</button>
+                        </div>
+                        <div id="push-task-meta" class="document-tip">
+                            演示模式下，未配置真实端点时会模拟“已发送”，并附带载荷摘要与重试次数。
+                        </div>
+                        <div class="detail-grid">
+                            <div class="detail-card">
+                                <h4>推送任务汇总</h4>
+                                <ul id="push-task-summary" class="material-list">
+                                    <li>暂无任务</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>最近推送任务</h4>
+                                <div id="push-task-list" class="admin-list compact-list">
+                                    <div class="admin-record"><p>暂无推送任务记录。</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-grid lower-grid">
+                    <div class="glass-card admin-panel">
+                        <h3>月度 / 季度专项报告</h3>
+                        <div class="response-inline">
+                            <button id="special-report-monthly-btn" type="button" class="ghost-btn" data-period="monthly">查看月度专项报告</button>
+                            <button id="special-report-quarterly-btn" type="button" class="ghost-btn" data-period="quarterly">查看季度专项报告</button>
+                            <span id="special-report-period-pill" class="status-pill neutral">默认范围</span>
+                        </div>
+                        <div class="detail-grid">
+                            <div class="detail-card">
+                                <h4>报告概要</h4>
+                                <ul id="special-report-period-summary" class="material-list">
+                                    <li>请选择月度或季度报告</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>关键指标</h4>
+                                <ul id="special-report-period-metrics" class="material-list">
+                                    <li>暂无指标</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="detail-grid">
+                            <div class="detail-card">
+                                <h4>领域 / 区域亮点</h4>
+                                <ul id="special-report-period-highlights" class="material-list">
+                                    <li>暂无亮点</li>
+                                </ul>
+                            </div>
+                            <div class="detail-card">
+                                <h4>建议处置</h4>
+                                <ul id="special-report-period-actions" class="material-list">
+                                    <li>暂无建议</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <script src="{{ url_for('static', path='app.js') }}"></script>
+</body>
+</html>
